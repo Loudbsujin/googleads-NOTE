@@ -17,39 +17,44 @@ const fmtPct = (n: number) => `${(n * 100).toFixed(2)}%`;
 export function buildInsights(
   total: Metrics,
   campaigns: GroupResult[],
-  keywords: GroupResult[]
+  keywords: GroupResult[],
+  ads: GroupResult[] = []
 ): Insight[] {
   const insights: Insight[] = [];
 
-  // 1. 조회수 견인 1등 캠페인
-  const byViews = [...campaigns].sort((a, b) => b.metrics.views - a.metrics.views);
+  // 견인 요소 분석의 기준 차원: 광고(소재)가 있으면 그것을, 없으면 캠페인을 사용.
+  const primary = ads.length > 0 ? ads : campaigns;
+  const unit = ads.length > 0 ? "광고(소재)" : "캠페인";
+
+  // 1. 조회수 견인 1위
+  const byViews = [...primary].sort((a, b) => b.metrics.views - a.metrics.views);
   if (byViews.length > 0 && byViews[0].metrics.views > 0) {
     const top = byViews[0];
     const share = total.views > 0 ? top.metrics.views / total.views : 0;
     insights.push({
       type: "positive",
-      title: `조회수 견인 1위: "${top.key}"`,
+      title: `조회수 견인 1위 ${unit}: "${top.key}"`,
       detail: `전체 조회수의 ${fmtPct(share)}(${fmtInt(
         top.metrics.views
-      )}회)를 이 캠페인이 견인했습니다. CPV ${fmtCpv(top.metrics.cpv)}, 조회율 ${fmtPct(
+      )}회)를 견인했습니다. CPV ${fmtCpv(top.metrics.cpv)}, 조회율 ${fmtPct(
         top.metrics.viewRate
       )}.`,
     });
   }
 
-  // 2. CPV 효율이 가장 좋은 캠페인 (조회수 100회 이상만)
-  const eligible = campaigns.filter((c) => c.metrics.views >= 100);
+  // 2. CPV 효율이 가장 좋은 항목 (조회수 100회 이상만)
+  const eligible = primary.filter((c) => c.metrics.views >= 100);
   if (eligible.length > 1) {
     const cheapest = [...eligible].sort((a, b) => a.metrics.cpv - b.metrics.cpv)[0];
     insights.push({
       type: "positive",
-      title: `가장 효율적인 캠페인: "${cheapest.key}"`,
+      title: `가장 효율적인 ${unit}: "${cheapest.key}"`,
       detail: `조회당 비용(CPV)이 ${fmtCpv(
         cheapest.metrics.cpv
       )}로 가장 저렴합니다. 예산을 늘려 조회수를 더 끌어올릴 여지가 있습니다.`,
     });
 
-    // 3. CPV가 평균보다 크게 비싼 캠페인 경고
+    // 3. CPV가 평균보다 크게 비싼 항목 경고
     const avgCpv = total.cpv;
     const expensive = [...eligible].sort((a, b) => b.metrics.cpv - a.metrics.cpv)[0];
     if (avgCpv > 0 && expensive.metrics.cpv > avgCpv * 1.5) {
@@ -78,19 +83,19 @@ export function buildInsights(
     });
   }
 
-  // 5. 채널 성장: 구독자 견인 캠페인
+  // 5. 채널 성장: 구독자 견인 항목
   if (total.earnedSubscribers > 0) {
-    const bySub = [...campaigns].sort(
+    const bySub = [...primary].sort(
       (a, b) => b.metrics.earnedSubscribers - a.metrics.earnedSubscribers
     );
     const topSub = bySub[0];
     if (topSub && topSub.metrics.earnedSubscribers > 0) {
       insights.push({
         type: "positive",
-        title: `구독자 견인 1위: "${topSub.key}"`,
+        title: `구독자 견인 1위 ${unit}: "${topSub.key}"`,
         detail: `획득 구독자 ${fmtInt(
           topSub.metrics.earnedSubscribers
-        )}명을 만들었습니다. 채널 성장에 가장 기여한 캠페인이므로 예산 확대를 검토해 보세요.`,
+        )}명을 만들었습니다. 채널 성장에 가장 기여했으므로 예산·노출 확대를 검토해 보세요.`,
       });
     }
   }

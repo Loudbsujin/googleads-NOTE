@@ -23,6 +23,7 @@ export interface ExportInput {
   fileName: string;
   total: Metrics;
   campaigns: GroupResult[];
+  ads: GroupResult[];
   keywords: GroupResult[];
   insights: Insight[];
 }
@@ -41,8 +42,11 @@ function metricsTable(groups: GroupResult[], label: string): string {
 }
 
 export function buildMarkdown(input: ExportInput, withPrompt: boolean): string {
-  const { fileName, total, campaigns, keywords, insights } = input;
+  const { fileName, total, campaigns, ads, keywords, insights } = input;
   const topCampaigns = [...campaigns]
+    .sort((a, b) => b.metrics.views - a.metrics.views)
+    .slice(0, 10);
+  const topAds = [...ads]
     .sort((a, b) => b.metrics.views - a.metrics.views)
     .slice(0, 10);
   const topKeywords = [...keywords]
@@ -94,6 +98,11 @@ export function buildMarkdown(input: ExportInput, withPrompt: boolean): string {
         `- 100% 완시청: ${fmtPct(total.vp100)}`,
       ].join("\n")
     );
+  }
+
+  if (topAds.length > 0) {
+    sections.push(`\n## 조회수 견인 광고(소재) 순위`);
+    sections.push(metricsTable(topAds, "광고(소재)"));
   }
 
   sections.push(`\n## 조회수 견인 캠페인 순위`);
@@ -184,6 +193,7 @@ export function buildCsv(input: ExportInput): string {
   const rows = [
     headers.join(","),
     line("total", "전체", input.total),
+    ...input.ads.map((g) => line("ad", g.key, g.metrics)),
     ...input.campaigns.map((g) => line("campaign", g.key, g.metrics)),
     ...input.keywords.map((g) => line("keyword", g.key, g.metrics)),
   ];

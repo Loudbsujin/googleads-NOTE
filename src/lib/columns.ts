@@ -3,6 +3,8 @@
 
 export type CanonicalField =
   | "campaign"
+  | "campaignId"
+  | "adName"
   | "adGroup"
   | "keyword"
   | "date"
@@ -24,6 +26,10 @@ export type CanonicalField =
 // 각 표준 필드에 매칭되는 헤더 후보(정규화 후 비교).
 const FIELD_ALIASES: Record<CanonicalField, string[]> = {
   campaign: ["campaign", "캠페인", "캠페인이름", "campaignname"],
+  // 캠페인 ID(숫자)를 캠페인 이름으로 오인식하지 않도록 먼저 흡수하는 decoy 필드
+  campaignId: ["캠페인id", "campaignid"],
+  // 동영상/광고 보고서에는 캠페인명 대신 광고 이름이 핵심 견인 차원이 된다
+  adName: ["광고이름", "adname", "광고소재"],
   adGroup: ["adgroup", "광고그룹", "광고그룹이름", "adgroupname"],
   keyword: ["keyword", "키워드", "searchkeyword", "검색어"],
   date: ["day", "date", "날짜", "일", "week", "month", "주", "월"],
@@ -36,7 +42,13 @@ const FIELD_ALIASES: Record<CanonicalField, string[]> = {
   cost: ["cost", "비용", "spend", "지출", "총비용"],
   conversions: ["conversions", "conv", "전환수", "전환"],
   earnedViews: ["earnedviews", "획득조회수", "earnview"],
-  earnedSubscribers: ["earnedsubscribers", "획득구독자", "구독자", "subscribers"],
+  earnedSubscribers: [
+    "earnedsubscribers",
+    "획득구독자",
+    "구독수",
+    "구독자",
+    "subscribers",
+  ],
   vp25: ["videoplayedto25", "playedto25", "진행률25", "25재생", "played25"],
   vp50: ["videoplayedto50", "playedto50", "진행률50", "50재생", "played50"],
   vp75: ["videoplayedto75", "playedto75", "진행률75", "75재생", "played75"],

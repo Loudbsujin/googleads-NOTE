@@ -6,13 +6,25 @@ import { RawRow } from "./metrics";
 
 export async function parseFile(file: File): Promise<RawRow[]> {
   const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
 
-  // CSV/텍스트는 SheetJS가 기본 코드페이지(Latin-1)로 읽어 한글이 깨지므로
-  // UTF-8로 직접 디코딩해 문자열로 파싱한다. (xlsx 바이너리는 그대로 처리)
-  const isText = /\.(csv|tsv|txt)$/i.test(file.name) || file.type.includes("csv");
-  const workbook = isText
-    ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
-    : XLSX.read(buffer, { type: "array" });
+  // xlsx/xls 바이너리(zip은 PK, 구버전 xls는 D0CF)는 바이너리로 읽고,
+  // 그 외 텍스트(csv/tsv)는 BOM으로 인코딩을 감지해 문자열로 읽는다.
+  // 구글 애즈 한글 내보내기는 UTF-16LE + 탭 구분이라 UTF-8로 읽으면 깨진다.
+  const isBinary =
+    (bytes[0] === 0x50 && bytes[1] === 0x4b) || // "PK" (xlsx)
+    (bytes[0] === 0xd0 && bytes[1] === 0xcf); // (구버전 xls)
+
+  let workbook;
+  if (isBinary) {
+    workbook = XLSX.read(buffer, { type: "array" });
+  } else {
+    let enc = "utf-8";
+    if (bytes[0] === 0xff && bytes[1] === 0xfe) enc = "utf-16le";
+    else if (bytes[0] === 0xfe && bytes[1] === 0xff) enc = "utf-16be";
+    const text = new TextDecoder(enc).decode(buffer);
+    workbook = XLSX.read(text, { type: "string" });
+  }
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 
   // Google Ads 내보내기는 상단에 제목/기간 등 메타 행이 있는 경우가 많다.
@@ -39,7 +51,14 @@ export async function parseFile(file: File): Promise<RawRow[]> {
       });
       return obj;
     })
-    .filter((obj) => Object.values(obj).some((v) => v !== "" && v != null));
+    .filter((obj) => Object.values(obj).some((v) => v !== "" && v != null))
+    // "총계: ..." / "Total" 등 요약(합계) 행 제거
+    .filter(
+      (obj) =>
+        !Object.values(obj).some((v) =>
+          /^\s*(총계|합계|total)\b/i.test(String(v ?? ""))
+        )
+    );
 }
 
 // 노출수/조회수/비용 등 핵심 키워드가 포함된 행을 헤더로 판단.
