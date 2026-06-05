@@ -18,6 +18,7 @@ export interface NormalizedRow {
   device: string;
   age: string;
   gender: string;
+  currency: string;
   // 지표 (합산 가능)
   impressions: number;
   views: number;
@@ -181,6 +182,7 @@ export function normalizeRows(
       device: str(row, "device"),
       age: str(row, "age"),
       gender: str(row, "gender"),
+      currency: (clean(get(row, "currency")) || "KRW").toUpperCase(),
       impressions: toNumber(get(row, "impressions")),
       views: toNumber(get(row, "views")),
       clicks: toNumber(get(row, "clicks")),
@@ -202,6 +204,29 @@ export function normalizeRows(
     });
 
   return { rows, mapping };
+}
+
+// 데이터에 등장하는 통화 코드 목록 (KRW 제외, 환산이 필요한 것만).
+export function detectForeignCurrencies(rows: NormalizedRow[]): string[] {
+  const set = new Set<string>();
+  rows.forEach((r) => {
+    const c = (r.currency || "KRW").toUpperCase();
+    if (c && c !== "KRW") set.add(c);
+  });
+  return Array.from(set);
+}
+
+// 각 행의 비용을 통화별 환율(통화 1단위당 KRW)로 곱해 원화로 환산한 새 행 배열 반환.
+// rateToKRW 예: { JPY: 9.1, USD: 1350 } (KRW는 항상 1)
+export function convertToKRW(
+  rows: NormalizedRow[],
+  rateToKRW: Record<string, number>
+): NormalizedRow[] {
+  return rows.map((r) => {
+    const cur = (r.currency || "KRW").toUpperCase();
+    const rate = cur === "KRW" ? 1 : rateToKRW[cur] ?? 1;
+    return rate === 1 ? r : { ...r, cost: r.cost * rate };
+  });
 }
 
 // 특정 차원(캠페인/키워드/기기 등)별로 그룹핑 후 지표 계산.

@@ -11,6 +11,7 @@ export type CanonicalField =
   | "device"
   | "age"
   | "gender"
+  | "currency"
   | "impressions"
   | "views"
   | "clicks"
@@ -36,6 +37,7 @@ const FIELD_ALIASES: Record<CanonicalField, string[]> = {
   device: ["device", "기기", "디바이스"],
   age: ["age", "연령", "연령대"],
   gender: ["gender", "성별"],
+  currency: ["통화코드", "currencycode", "currency", "통화"],
   impressions: ["impressions", "impr", "노출수", "노출"],
   views: ["views", "조회수", "동영상조회수", "videoviews"],
   clicks: ["clicks", "클릭수", "클릭"],
