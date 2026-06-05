@@ -3,6 +3,7 @@
 import { useState } from "react";
 import FileUpload from "@/components/FileUpload";
 import Report from "@/components/Report";
+import ExportBar from "@/components/ExportBar";
 import { parseFile } from "@/lib/parse";
 import {
   GroupResult,
@@ -94,6 +95,19 @@ export default function Home() {
               PDF로 저장 / 인쇄
             </button>
           </div>
+
+          <div className="mb-6">
+            <ExportBar
+              input={{
+                fileName: analysis.fileName,
+                total: analysis.total,
+                campaigns: analysis.campaigns,
+                keywords: analysis.keywords,
+                insights: analysis.insights,
+              }}
+            />
+          </div>
+
           <Report
             total={analysis.total}
             campaigns={analysis.campaigns}
