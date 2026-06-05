@@ -22,6 +22,12 @@ interface Analysis {
   rows: NormalizedRow[];
   insights: Insight[];
   fileName: string;
+  fileNames: string[];
+}
+
+// 파일명에서 확장자를 떼어 캠페인 이름 대체값으로 쓴다.
+function campaignNameFromFile(name: string): string {
+  return name.replace(/\.[^.]+$/, "").trim() || name;
 }
 
 export default function Home() {
@@ -29,32 +35,54 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleFile(file: File) {
+  async function handleFiles(files: File[]) {
     setLoading(true);
     setError(null);
     try {
-      const rawRows = await parseFile(file);
-      const { rows } = normalizeRows(rawRows);
+      const allRows: NormalizedRow[] = [];
+      const failed: string[] = [];
 
-      if (rows.length === 0) {
+      for (const file of files) {
+        try {
+          const rawRows = await parseFile(file);
+          // 캠페인 컬럼이 없는 파일은 파일명을 캠페인 이름으로 사용
+          const { rows } = normalizeRows(rawRows, campaignNameFromFile(file.name));
+          if (rows.length === 0) failed.push(file.name);
+          allRows.push(...rows);
+        } catch {
+          failed.push(file.name);
+        }
+      }
+
+      if (allRows.length === 0) {
         throw new Error(
           "분석할 데이터를 찾지 못했습니다. Google Ads에서 내보낸 Excel/CSV가 맞는지 확인해 주세요."
         );
       }
 
-      const total = computeMetrics(rows);
-      const campaigns = groupBy(rows, "campaign");
-      const keywords = groupBy(rows, "keyword");
+      const total = computeMetrics(allRows);
+      const campaigns = groupBy(allRows, "campaign");
+      const keywords = groupBy(allRows, "keyword");
       const insights = buildInsights(total, campaigns, keywords);
+
+      const okNames = files.map((f) => f.name).filter((n) => !failed.includes(n));
 
       setAnalysis({
         total,
         campaigns,
         keywords,
-        rows,
+        rows: allRows,
         insights,
-        fileName: file.name,
+        fileName:
+          okNames.length === 1 ? okNames[0] : `${okNames.length}개 파일 합산`,
+        fileNames: okNames,
       });
+
+      setError(
+        failed.length > 0
+          ? `다음 파일은 데이터를 읽지 못해 제외했습니다: ${failed.join(", ")}`
+          : null
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "파일 분석 중 오류가 발생했습니다.");
       setAnalysis(null);
@@ -74,7 +102,7 @@ export default function Home() {
       </header>
 
       <div className="no-print">
-        <FileUpload onFile={handleFile} loading={loading} />
+        <FileUpload onFiles={handleFiles} loading={loading} />
         {error && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
@@ -86,7 +114,8 @@ export default function Home() {
         <div className="mt-10">
           <div className="no-print mb-6 flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              분석 파일: <span className="font-medium">{analysis.fileName}</span>
+              분석 파일 ({analysis.fileNames.length}개):{" "}
+              <span className="font-medium">{analysis.fileNames.join(", ")}</span>
             </div>
             <button
               onClick={() => window.print()}

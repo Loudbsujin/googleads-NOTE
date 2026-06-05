@@ -69,7 +69,12 @@ export function computeMetrics(rows: NormalizedRow[]): Metrics {
 }
 
 // 원본 행 배열을 표준 행으로 정규화.
-export function normalizeRows(rawRows: RawRow[]): {
+// fallbackCampaign: 캠페인 컬럼이 없는 파일(캠페인별로 분리된 export 등)에서
+// 캠페인 이름 대신 사용할 값 (예: 파일명).
+export function normalizeRows(
+  rawRows: RawRow[],
+  fallbackCampaign?: string
+): {
   rows: NormalizedRow[];
   mapping: Partial<Record<CanonicalField, string>>;
 } {
@@ -83,9 +88,15 @@ export function normalizeRows(rawRows: RawRow[]): {
     return col ? row[col] : undefined;
   };
 
+  const campaignOf = (row: RawRow): string => {
+    const raw = get(row, "campaign");
+    const value = raw == null ? "" : String(raw).trim();
+    return value || fallbackCampaign || "(미지정)";
+  };
+
   const rows: NormalizedRow[] = rawRows
     .map((row) => ({
-      campaign: String(get(row, "campaign") ?? "(미지정)"),
+      campaign: campaignOf(row),
       adGroup: String(get(row, "adGroup") ?? ""),
       keyword: String(get(row, "keyword") ?? ""),
       date: String(get(row, "date") ?? ""),

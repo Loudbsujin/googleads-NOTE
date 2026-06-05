@@ -3,21 +3,21 @@
 import { useCallback, useState } from "react";
 
 interface Props {
-  onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
   loading: boolean;
 }
 
-export default function FileUpload({ onFile, loading }: Props) {
+export default function FileUpload({ onFiles, loading }: Props) {
   const [dragging, setDragging] = useState(false);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) onFile(file);
+      const files = Array.from(e.dataTransfer.files ?? []);
+      if (files.length) onFiles(files);
     },
-    [onFile]
+    [onFiles]
   );
 
   return (
@@ -37,20 +37,22 @@ export default function FileUpload({ onFile, loading }: Props) {
         Google Ads Excel 파일을 여기에 끌어다 놓으세요
       </p>
       <p className="mt-1 text-sm text-gray-500">
-        .xlsx 또는 .csv · 데이터는 브라우저 안에서만 처리되며 서버로 전송되지
-        않습니다
+        .xlsx 또는 .csv · <strong>여러 개를 한꺼번에</strong> 올리면 합쳐서
+        분석합니다 · 데이터는 브라우저 안에서만 처리됩니다
       </p>
 
       <label className="mt-6 inline-block cursor-pointer rounded-lg bg-brand px-5 py-2.5 font-medium text-white hover:bg-brand-dark">
-        {loading ? "분석 중…" : "파일 선택"}
+        {loading ? "분석 중…" : "파일 선택 (여러 개 가능)"}
         <input
           type="file"
           accept=".xlsx,.xls,.csv"
+          multiple
           className="hidden"
           disabled={loading}
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onFile(file);
+            const files = Array.from(e.target.files ?? []);
+            if (files.length) onFiles(files);
+            e.target.value = "";
           }}
         />
       </label>
