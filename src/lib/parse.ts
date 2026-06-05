@@ -6,7 +6,13 @@ import { RawRow } from "./metrics";
 
 export async function parseFile(file: File): Promise<RawRow[]> {
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array" });
+
+  // CSV/텍스트는 SheetJS가 기본 코드페이지(Latin-1)로 읽어 한글이 깨지므로
+  // UTF-8로 직접 디코딩해 문자열로 파싱한다. (xlsx 바이너리는 그대로 처리)
+  const isText = /\.(csv|tsv|txt)$/i.test(file.name) || file.type.includes("csv");
+  const workbook = isText
+    ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
+    : XLSX.read(buffer, { type: "array" });
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 
   // Google Ads 내보내기는 상단에 제목/기간 등 메타 행이 있는 경우가 많다.
