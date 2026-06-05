@@ -1,5 +1,6 @@
 // 표준화된 행 데이터에서 파생 지표를 계산한다.
-// 유튜브 조회수 견인 캠페인에 초점: CPV(조회당 비용), 조회율 중심.
+// 유튜브 조회수 견인 + 채널 성장에 초점:
+// CPV·조회율, 획득 조회수/구독자, 동영상 재생 진행률(시청 지속률).
 
 import { CanonicalField, mapHeaders } from "./columns";
 
@@ -8,15 +9,27 @@ export interface RawRow {
 }
 
 export interface NormalizedRow {
+  // 차원
   campaign: string;
   adGroup: string;
   keyword: string;
   date: string;
+  device: string;
+  age: string;
+  gender: string;
+  // 지표 (합산 가능)
   impressions: number;
   views: number;
   clicks: number;
   cost: number;
   conversions: number;
+  earnedViews: number;
+  earnedSubscribers: number;
+  // 동영상 재생 진행률 (0~1 비율, 행별 값)
+  vp25: number;
+  vp50: number;
+  vp75: number;
+  vp100: number;
 }
 
 export interface Metrics {
@@ -25,12 +38,20 @@ export interface Metrics {
   clicks: number;
   cost: number;
   conversions: number;
+  earnedViews: number;
+  earnedSubscribers: number;
   // 파생 지표
   viewRate: number; // 조회율 = 조회수 / 노출수
   cpv: number; // 조회당 비용 = 비용 / 조회수
   ctr: number; // 클릭률 = 클릭수 / 노출수
   cpc: number; // 클릭당 비용 = 비용 / 클릭수
   cpm: number; // 1000회 노출당 비용
+  subRate: number; // 구독 견인율 = 획득 구독자 / 조회수
+  // 재생 진행률 (노출 가중 평균, 0~1)
+  vp25: number;
+  vp50: number;
+  vp75: number;
+  vp100: number;
 }
 
 // 숫자 파싱: "1,234", "₩1,234", "12.3%" 등 처리.
@@ -42,30 +63,79 @@ function toNumber(value: string | number | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// 비율 파싱: "75.3%" -> 0.753, "0.75" -> 0.75. 0~1로 정규화.
+function toRate(value: string | number | undefined): number {
+  const n = toNumber(value);
+  if (n <= 0) return 0;
+  const rate = n > 1 ? n / 100 : n;
+  return rate > 1 ? 1 : rate;
+}
+
 function safeDiv(a: number, b: number): number {
   return b > 0 ? a / b : 0;
 }
 
 export function computeMetrics(rows: NormalizedRow[]): Metrics {
-  const sum = rows.reduce(
-    (acc, r) => ({
-      impressions: acc.impressions + r.impressions,
-      views: acc.views + r.views,
-      clicks: acc.clicks + r.clicks,
-      cost: acc.cost + r.cost,
-      conversions: acc.conversions + r.conversions,
-    }),
-    { impressions: 0, views: 0, clicks: 0, cost: 0, conversions: 0 }
-  );
+  let impressions = 0,
+    views = 0,
+    clicks = 0,
+    cost = 0,
+    conversions = 0,
+    earnedViews = 0,
+    earnedSubscribers = 0;
+  // 재생 진행률은 노출수로 가중 평균
+  let w = 0,
+    vp25w = 0,
+    vp50w = 0,
+    vp75w = 0,
+    vp100w = 0;
+
+  for (const r of rows) {
+    impressions += r.impressions;
+    views += r.views;
+    clicks += r.clicks;
+    cost += r.cost;
+    conversions += r.conversions;
+    earnedViews += r.earnedViews;
+    earnedSubscribers += r.earnedSubscribers;
+
+    if (r.vp25 || r.vp50 || r.vp75 || r.vp100) {
+      const wt = r.impressions > 0 ? r.impressions : 1;
+      w += wt;
+      vp25w += r.vp25 * wt;
+      vp50w += r.vp50 * wt;
+      vp75w += r.vp75 * wt;
+      vp100w += r.vp100 * wt;
+    }
+  }
 
   return {
-    ...sum,
-    viewRate: safeDiv(sum.views, sum.impressions),
-    cpv: safeDiv(sum.cost, sum.views),
-    ctr: safeDiv(sum.clicks, sum.impressions),
-    cpc: safeDiv(sum.cost, sum.clicks),
-    cpm: safeDiv(sum.cost, sum.impressions) * 1000,
+    impressions,
+    views,
+    clicks,
+    cost,
+    conversions,
+    earnedViews,
+    earnedSubscribers,
+    viewRate: safeDiv(views, impressions),
+    cpv: safeDiv(cost, views),
+    ctr: safeDiv(clicks, impressions),
+    cpc: safeDiv(cost, clicks),
+    cpm: safeDiv(cost, impressions) * 1000,
+    subRate: safeDiv(earnedSubscribers, views),
+    vp25: safeDiv(vp25w, w),
+    vp50: safeDiv(vp50w, w),
+    vp75: safeDiv(vp75w, w),
+    vp100: safeDiv(vp100w, w),
   };
+}
+
+// 데이터에 특정 지표 그룹이 존재하는지 (섹션 표시 여부 판단).
+export function hasEarnedData(m: Metrics): boolean {
+  return m.earnedViews > 0 || m.earnedSubscribers > 0;
+}
+export function hasQuartileData(m: Metrics): boolean {
+  return m.vp25 > 0 || m.vp50 > 0 || m.vp75 > 0 || m.vp100 > 0;
 }
 
 // 원본 행 배열을 표준 행으로 정규화.
@@ -94,17 +164,31 @@ export function normalizeRows(
     return value || fallbackCampaign || "(미지정)";
   };
 
+  const str = (row: RawRow, field: CanonicalField): string => {
+    const raw = get(row, field);
+    return raw == null ? "" : String(raw).trim();
+  };
+
   const rows: NormalizedRow[] = rawRows
     .map((row) => ({
       campaign: campaignOf(row),
-      adGroup: String(get(row, "adGroup") ?? ""),
-      keyword: String(get(row, "keyword") ?? ""),
-      date: String(get(row, "date") ?? ""),
+      adGroup: str(row, "adGroup"),
+      keyword: str(row, "keyword"),
+      date: str(row, "date"),
+      device: str(row, "device"),
+      age: str(row, "age"),
+      gender: str(row, "gender"),
       impressions: toNumber(get(row, "impressions")),
       views: toNumber(get(row, "views")),
       clicks: toNumber(get(row, "clicks")),
       cost: toNumber(get(row, "cost")),
       conversions: toNumber(get(row, "conversions")),
+      earnedViews: toNumber(get(row, "earnedViews")),
+      earnedSubscribers: toNumber(get(row, "earnedSubscribers")),
+      vp25: toRate(get(row, "vp25")),
+      vp50: toRate(get(row, "vp50")),
+      vp75: toRate(get(row, "vp75")),
+      vp100: toRate(get(row, "vp100")),
     }))
     // 합계/총계 행 및 완전히 빈 행 제거
     .filter((r) => {
@@ -117,7 +201,7 @@ export function normalizeRows(
   return { rows, mapping };
 }
 
-// 특정 차원(캠페인/키워드 등)별로 그룹핑 후 지표 계산.
+// 특정 차원(캠페인/키워드/기기 등)별로 그룹핑 후 지표 계산.
 export interface GroupResult {
   key: string;
   metrics: Metrics;

@@ -49,6 +49,13 @@ Google Ads에서 캠페인/키워드 리포트를 Excel 또는 CSV로 내보내�
 | 클릭수 | 클릭수, Clicks |
 | 비용 | 비용, Cost |
 | 날짜 | 날짜, Day, Date |
+| 기기 | 기기, Device |
+| 연령 / 성별 | 연령, 성별, Age, Gender |
+| 획득 조회수 | 획득 조회수, Earned views |
+| 획득 구독자 | 획득 구독자, Earned subscribers |
+| 재생 진행률 | 동영상 재생 진행률 25/50/75/100%, Video played to 25/50/75/100% |
+
+> 채널 성장 지표(획득 조회수·구독자), 동영상 시청 지속률 퍼널, 기기·인구통계 분해는 해당 열이 데이터에 있을 때 자동으로 보고서에 추가됩니다. `sample-full.csv`로 모든 기능을 한 번에 확인할 수 있습니다.
 
 `sample-data.csv`(여러 캠페인이 한 파일에) 또는 `sample-campaign-shorts.csv` + `sample-campaign-music.csv`(캠페인별로 분리된 파일을 동시에 업로드)로 바로 테스트해 볼 수 있습니다.
 

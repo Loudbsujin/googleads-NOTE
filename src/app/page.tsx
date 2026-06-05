@@ -19,6 +19,9 @@ interface Analysis {
   total: Metrics;
   campaigns: GroupResult[];
   keywords: GroupResult[];
+  devices: GroupResult[];
+  ages: GroupResult[];
+  genders: GroupResult[];
   rows: NormalizedRow[];
   insights: Insight[];
   fileName: string;
@@ -63,6 +66,9 @@ export default function Home() {
       const total = computeMetrics(allRows);
       const campaigns = groupBy(allRows, "campaign");
       const keywords = groupBy(allRows, "keyword");
+      const devices = groupBy(allRows, "device");
+      const ages = groupBy(allRows, "age");
+      const genders = groupBy(allRows, "gender");
       const insights = buildInsights(total, campaigns, keywords);
 
       const okNames = files.map((f) => f.name).filter((n) => !failed.includes(n));
@@ -71,6 +77,9 @@ export default function Home() {
         total,
         campaigns,
         keywords,
+        devices,
+        ages,
+        genders,
         rows: allRows,
         insights,
         fileName:
@@ -141,6 +150,9 @@ export default function Home() {
             total={analysis.total}
             campaigns={analysis.campaigns}
             keywords={analysis.keywords}
+            devices={analysis.devices}
+            ages={analysis.ages}
+            genders={analysis.genders}
             rows={analysis.rows}
             insights={analysis.insights}
           />

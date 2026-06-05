@@ -2,7 +2,7 @@
 // - Markdown 요약 (추천 프롬프트 동봉) -> 클립보드 복사
 // - JSON / CSV 데이터 -> 파일 다운로드
 
-import { GroupResult, Metrics } from "./metrics";
+import { GroupResult, Metrics, hasEarnedData, hasQuartileData } from "./metrics";
 import { Insight } from "./insights";
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString("ko-KR");
@@ -73,6 +73,29 @@ export function buildMarkdown(input: ExportInput, withPrompt: boolean): string {
     ].join("\n")
   );
 
+  if (hasEarnedData(total)) {
+    sections.push(`\n## 채널 성장 지표`);
+    sections.push(
+      [
+        `- 획득 조회수: ${fmtInt(total.earnedViews)}회`,
+        `- 획득 구독자: ${fmtInt(total.earnedSubscribers)}명`,
+        `- 구독 견인율: ${fmtPct(total.subRate)}`,
+      ].join("\n")
+    );
+  }
+
+  if (hasQuartileData(total)) {
+    sections.push(`\n## 동영상 시청 지속률 (노출 가중 평균)`);
+    sections.push(
+      [
+        `- 25% 재생: ${fmtPct(total.vp25)}`,
+        `- 50% 재생: ${fmtPct(total.vp50)}`,
+        `- 75% 재생: ${fmtPct(total.vp75)}`,
+        `- 100% 완시청: ${fmtPct(total.vp100)}`,
+      ].join("\n")
+    );
+  }
+
   sections.push(`\n## 조회수 견인 캠페인 순위`);
   sections.push(metricsTable(topCampaigns, "캠페인"));
 
@@ -116,11 +139,18 @@ export function buildCsv(input: ExportInput): string {
     "clicks",
     "cost",
     "conversions",
+    "earnedViews",
+    "earnedSubscribers",
     "viewRate",
     "cpv",
     "ctr",
     "cpc",
     "cpm",
+    "subRate",
+    "vp25",
+    "vp50",
+    "vp75",
+    "vp100",
   ];
   const escape = (v: string | number) => {
     const s = String(v);
@@ -135,11 +165,18 @@ export function buildCsv(input: ExportInput): string {
       m.clicks,
       m.cost,
       m.conversions,
+      m.earnedViews,
+      m.earnedSubscribers,
       m.viewRate.toFixed(4),
       m.cpv.toFixed(2),
       m.ctr.toFixed(4),
       m.cpc.toFixed(2),
       m.cpm.toFixed(2),
+      m.subRate.toFixed(4),
+      m.vp25.toFixed(4),
+      m.vp50.toFixed(4),
+      m.vp75.toFixed(4),
+      m.vp100.toFixed(4),
     ]
       .map(escape)
       .join(",");

@@ -12,13 +12,23 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { GroupResult, Metrics, NormalizedRow, groupBy } from "@/lib/metrics";
+import {
+  GroupResult,
+  Metrics,
+  NormalizedRow,
+  groupBy,
+  hasEarnedData,
+  hasQuartileData,
+} from "@/lib/metrics";
 import { Insight } from "@/lib/insights";
 
 interface Props {
   total: Metrics;
   campaigns: GroupResult[];
   keywords: GroupResult[];
+  devices: GroupResult[];
+  ages: GroupResult[];
+  genders: GroupResult[];
   rows: NormalizedRow[];
   insights: Insight[];
 }
@@ -54,7 +64,16 @@ function buildTrend(rows: NormalizedRow[]) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export default function Report({ total, campaigns, keywords, rows, insights }: Props) {
+export default function Report({
+  total,
+  campaigns,
+  keywords,
+  devices,
+  ages,
+  genders,
+  rows,
+  insights,
+}: Props) {
   const trend = buildTrend(rows);
   const topCampaigns = [...campaigns]
     .sort((a, b) => b.metrics.views - a.metrics.views)
@@ -62,6 +81,9 @@ export default function Report({ total, campaigns, keywords, rows, insights }: P
   const topKeywords = [...keywords]
     .sort((a, b) => b.metrics.views - a.metrics.views)
     .slice(0, 10);
+
+  const showEarned = hasEarnedData(total);
+  const showQuartiles = hasQuartileData(total);
 
   const barColors = ["#4285F4", "#1a73e8", "#5b9bff", "#7aaeff", "#a3c6ff"];
 
@@ -81,6 +103,83 @@ export default function Report({ total, campaigns, keywords, rows, insights }: P
           <KpiCard label="전환수" value={fmtInt(total.conversions)} />
         </div>
       </section>
+
+      {/* 채널 성장 (획득 조회수/구독자) */}
+      {showEarned && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">채널 성장 지표</h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <KpiCard
+              label="획득 조회수"
+              value={fmtInt(total.earnedViews)}
+              sub="광고 이후 추가 발생한 조회"
+            />
+            <KpiCard
+              label="획득 구독자"
+              value={fmtInt(total.earnedSubscribers)}
+              sub="광고가 만든 신규 구독"
+            />
+            <KpiCard
+              label="구독 견인율"
+              value={fmtPct(total.subRate)}
+              sub="획득 구독자 / 조회수"
+            />
+          </div>
+          {/* 구독자 견인 캠페인 */}
+          <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="mb-2 text-sm font-medium text-gray-600">
+              구독자 견인 캠페인 TOP
+            </div>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart
+                data={[...campaigns]
+                  .sort((a, b) => b.metrics.earnedSubscribers - a.metrics.earnedSubscribers)
+                  .slice(0, 8)
+                  .map((c) => ({ name: c.key, subs: c.metrics.earnedSubscribers }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={70} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtInt(v)} />
+                <Tooltip formatter={(v: number) => fmtInt(v) + "명"} />
+                <Bar dataKey="subs" radius={[6, 6, 0, 0]} fill="#34a853" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
+
+      {/* 동영상 재생 진행률 퍼널 */}
+      {showQuartiles && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">동영상 시청 지속률</h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="mb-2 text-sm text-gray-500">
+              노출 가중 평균. 막대가 뒤로 갈수록 천천히 줄어들수록 끝까지 보는
+              영상입니다.
+            </p>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={[
+                  { stage: "25% 재생", rate: Number((total.vp25 * 100).toFixed(1)) },
+                  { stage: "50% 재생", rate: Number((total.vp50 * 100).toFixed(1)) },
+                  { stage: "75% 재생", rate: Number((total.vp75 * 100).toFixed(1)) },
+                  { stage: "100% 완시청", rate: Number((total.vp100 * 100).toFixed(1)) },
+                ]}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip formatter={(v: number) => `${v}%`} />
+                <Bar dataKey="rate" radius={[6, 6, 0, 0]}>
+                  {["#4285F4", "#1a73e8", "#fbbc04", "#ea4335"].map((c, i) => (
+                    <Cell key={i} fill={c} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
 
       {/* 자동 인사이트 */}
       {insights.length > 0 && (
@@ -149,14 +248,55 @@ export default function Report({ total, campaigns, keywords, rows, insights }: P
       {/* 캠페인 순위 테이블 */}
       <section>
         <h2 className="mb-3 text-lg font-bold">캠페인 순위</h2>
-        <RankTable groups={topCampaigns} dimensionLabel="캠페인" />
+        <RankTable groups={topCampaigns} dimensionLabel="캠페인" showSubs={showEarned} />
       </section>
 
       {/* 키워드 순위 테이블 */}
       {topKeywords.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-bold">조회수 기여 키워드 순위</h2>
-          <RankTable groups={topKeywords} dimensionLabel="키워드" />
+          <RankTable groups={topKeywords} dimensionLabel="키워드" showSubs={showEarned} />
+        </section>
+      )}
+
+      {/* 기기별 분해 */}
+      {devices.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">기기별 분석</h2>
+          <RankTable
+            groups={[...devices].sort((a, b) => b.metrics.views - a.metrics.views)}
+            dimensionLabel="기기"
+            showSubs={showEarned}
+          />
+        </section>
+      )}
+
+      {/* 인구통계 분해 */}
+      {(ages.length > 0 || genders.length > 0) && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">인구통계 분석</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {ages.length > 0 && (
+              <div>
+                <div className="mb-1 text-sm font-medium text-gray-600">연령대</div>
+                <RankTable
+                  groups={[...ages].sort((a, b) => b.metrics.views - a.metrics.views)}
+                  dimensionLabel="연령"
+                  showSubs={false}
+                />
+              </div>
+            )}
+            {genders.length > 0 && (
+              <div>
+                <div className="mb-1 text-sm font-medium text-gray-600">성별</div>
+                <RankTable
+                  groups={[...genders].sort((a, b) => b.metrics.views - a.metrics.views)}
+                  dimensionLabel="성별"
+                  showSubs={false}
+                />
+              </div>
+            )}
+          </div>
         </section>
       )}
     </div>
@@ -166,9 +306,11 @@ export default function Report({ total, campaigns, keywords, rows, insights }: P
 function RankTable({
   groups,
   dimensionLabel,
+  showSubs,
 }: {
   groups: GroupResult[];
   dimensionLabel: string;
+  showSubs: boolean;
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -180,6 +322,9 @@ function RankTable({
             <th className="px-4 py-2 text-right font-medium">조회수</th>
             <th className="px-4 py-2 text-right font-medium">조회율</th>
             <th className="px-4 py-2 text-right font-medium">CPV</th>
+            {showSubs && (
+              <th className="px-4 py-2 text-right font-medium">획득 구독자</th>
+            )}
             <th className="px-4 py-2 text-right font-medium">비용</th>
           </tr>
         </thead>
@@ -191,6 +336,11 @@ function RankTable({
               <td className="px-4 py-2 text-right">{fmtInt(g.metrics.views)}</td>
               <td className="px-4 py-2 text-right">{fmtPct(g.metrics.viewRate)}</td>
               <td className="px-4 py-2 text-right">{fmtCpv(g.metrics.cpv)}</td>
+              {showSubs && (
+                <td className="px-4 py-2 text-right">
+                  {fmtInt(g.metrics.earnedSubscribers)}
+                </td>
+              )}
               <td className="px-4 py-2 text-right">{fmtCost(g.metrics.cost)}</td>
             </tr>
           ))}

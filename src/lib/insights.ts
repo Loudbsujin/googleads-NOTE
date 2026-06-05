@@ -78,7 +78,37 @@ export function buildInsights(
     });
   }
 
-  // 5. 조회수 견인 키워드 top
+  // 5. 채널 성장: 구독자 견인 캠페인
+  if (total.earnedSubscribers > 0) {
+    const bySub = [...campaigns].sort(
+      (a, b) => b.metrics.earnedSubscribers - a.metrics.earnedSubscribers
+    );
+    const topSub = bySub[0];
+    if (topSub && topSub.metrics.earnedSubscribers > 0) {
+      insights.push({
+        type: "positive",
+        title: `구독자 견인 1위: "${topSub.key}"`,
+        detail: `획득 구독자 ${fmtInt(
+          topSub.metrics.earnedSubscribers
+        )}명을 만들었습니다. 채널 성장에 가장 기여한 캠페인이므로 예산 확대를 검토해 보세요.`,
+      });
+    }
+  }
+
+  // 6. 시청 지속률 (재생 진행률 100%)
+  if (total.vp100 > 0) {
+    const completion = total.vp100;
+    insights.push({
+      type: completion >= 0.2 ? "positive" : "info",
+      title: `영상 완시청률 ${fmtPct(completion)}`,
+      detail:
+        completion >= 0.2
+          ? "끝까지 시청하는 비율이 양호합니다. 소재 길이와 메시지가 잘 맞고 있어요."
+          : "끝까지 보는 비율이 낮습니다. 영상 길이를 줄이거나 핵심 메시지를 앞쪽으로 당겨 보세요.",
+    });
+  }
+
+  // 7. 조회수 견인 키워드 top
   const kwByViews = [...keywords].sort((a, b) => b.metrics.views - a.metrics.views);
   if (kwByViews.length > 0 && kwByViews[0].metrics.views > 0) {
     const topKw = kwByViews[0];
