@@ -18,6 +18,7 @@ import { Insight, buildInsights } from "@/lib/insights";
 interface Analysis {
   total: Metrics;
   campaigns: GroupResult[];
+  ads: GroupResult[];
   keywords: GroupResult[];
   devices: GroupResult[];
   ages: GroupResult[];
@@ -65,17 +66,19 @@ export default function Home() {
 
       const total = computeMetrics(allRows);
       const campaigns = groupBy(allRows, "campaign");
+      const ads = groupBy(allRows, "adName");
       const keywords = groupBy(allRows, "keyword");
       const devices = groupBy(allRows, "device");
       const ages = groupBy(allRows, "age");
       const genders = groupBy(allRows, "gender");
-      const insights = buildInsights(total, campaigns, keywords);
+      const insights = buildInsights(total, campaigns, keywords, ads);
 
       const okNames = files.map((f) => f.name).filter((n) => !failed.includes(n));
 
       setAnalysis({
         total,
         campaigns,
+        ads,
         keywords,
         devices,
         ages,
@@ -140,6 +143,7 @@ export default function Home() {
                 fileName: analysis.fileName,
                 total: analysis.total,
                 campaigns: analysis.campaigns,
+                ads: analysis.ads,
                 keywords: analysis.keywords,
                 insights: analysis.insights,
               }}
@@ -149,6 +153,7 @@ export default function Home() {
           <Report
             total={analysis.total}
             campaigns={analysis.campaigns}
+            ads={analysis.ads}
             keywords={analysis.keywords}
             devices={analysis.devices}
             ages={analysis.ages}

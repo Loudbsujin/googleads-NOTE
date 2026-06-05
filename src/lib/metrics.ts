@@ -11,6 +11,7 @@ export interface RawRow {
 export interface NormalizedRow {
   // 차원
   campaign: string;
+  adName: string;
   adGroup: string;
   keyword: string;
   date: string;
@@ -158,20 +159,22 @@ export function normalizeRows(
     return col ? row[col] : undefined;
   };
 
-  const campaignOf = (row: RawRow): string => {
-    const raw = get(row, "campaign");
-    const value = raw == null ? "" : String(raw).trim();
-    return value || fallbackCampaign || "(미지정)";
+  // Google Ads는 빈 값을 "--"(또는 "—")로 표기하므로 빈 문자열로 정규화한다.
+  const clean = (raw: string | number | undefined): string => {
+    const v = raw == null ? "" : String(raw).trim();
+    return v === "--" || v === "—" ? "" : v;
   };
 
-  const str = (row: RawRow, field: CanonicalField): string => {
-    const raw = get(row, field);
-    return raw == null ? "" : String(raw).trim();
-  };
+  const campaignOf = (row: RawRow): string =>
+    clean(get(row, "campaign")) || fallbackCampaign || "(미지정)";
+
+  const str = (row: RawRow, field: CanonicalField): string =>
+    clean(get(row, field));
 
   const rows: NormalizedRow[] = rawRows
     .map((row) => ({
       campaign: campaignOf(row),
+      adName: str(row, "adName"),
       adGroup: str(row, "adGroup"),
       keyword: str(row, "keyword"),
       date: str(row, "date"),

@@ -25,6 +25,7 @@ import { Insight } from "@/lib/insights";
 interface Props {
   total: Metrics;
   campaigns: GroupResult[];
+  ads: GroupResult[];
   keywords: GroupResult[];
   devices: GroupResult[];
   ages: GroupResult[];
@@ -67,6 +68,7 @@ function buildTrend(rows: NormalizedRow[]) {
 export default function Report({
   total,
   campaigns,
+  ads,
   keywords,
   devices,
   ages,
@@ -78,6 +80,9 @@ export default function Report({
   const topCampaigns = [...campaigns]
     .sort((a, b) => b.metrics.views - a.metrics.views)
     .slice(0, 8);
+  const topAds = [...ads]
+    .sort((a, b) => b.metrics.views - a.metrics.views)
+    .slice(0, 10);
   const topKeywords = [...keywords]
     .sort((a, b) => b.metrics.views - a.metrics.views)
     .slice(0, 10);
@@ -201,6 +206,36 @@ export default function Report({
                 <div className="text-sm text-gray-600">{ins.detail}</div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* 조회수 견인 광고(소재) 차트 */}
+      {topAds.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">조회수 견인 광고(소재) TOP</h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <ResponsiveContainer width="100%" height={340}>
+              <BarChart
+                layout="vertical"
+                data={topAds.map((c) => ({ name: c.key, views: c.metrics.views }))}
+                margin={{ left: 12, right: 16 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => fmtInt(v)} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 11 }}
+                  width={150}
+                />
+                <Tooltip formatter={(v: number) => fmtInt(v) + "회"} />
+                <Bar dataKey="views" radius={[0, 6, 6, 0]} fill="#4285F4" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-3">
+            <RankTable groups={topAds} dimensionLabel="광고(소재)" showSubs={showEarned} />
           </div>
         </section>
       )}
