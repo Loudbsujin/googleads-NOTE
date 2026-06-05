@@ -52,13 +52,17 @@ export async function parseFile(file: File): Promise<RawRow[]> {
       return obj;
     })
     .filter((obj) => Object.values(obj).some((v) => v !== "" && v != null))
-    // "총계: ..." / "Total" 등 요약(합계) 행 제거
-    .filter(
-      (obj) =>
-        !Object.values(obj).some((v) =>
-          /^\s*(총계|합계|total)\b/i.test(String(v ?? ""))
-        )
-    );
+    // 요약(합계) 행 제거. 구글 애즈는 "전체: 삭제되지 않은 광고", "전체: 캠페인",
+    // "총계", "Total: ..." 등으로 표기하며, 이를 데이터로 합산하면 과다 집계된다.
+    .filter((obj) => !Object.values(obj).some((v) => isSummaryLabel(String(v ?? ""))));
+}
+
+// "전체: ...", "총계: ...", "총계", "Total" 같은 요약 라벨인지 판별.
+function isSummaryLabel(value: string): boolean {
+  return (
+    /^\s*(전체|총계|합계|total)\s*[:：]/i.test(value) || // 콜론이 붙은 요약 라벨
+    /^\s*(총계|합계|total)\s*$/i.test(value) // 단독 총계/합계/Total
+  );
 }
 
 // 노출수/조회수/비용 등 핵심 키워드가 포함된 행을 헤더로 판단.
