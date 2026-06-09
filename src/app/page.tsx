@@ -86,24 +86,37 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const allRows: NormalizedRow[] = [];
+      // 파일별로 파싱하고 ad-level(광고 실적, 광고 이름 열 있음) / campaign-level(캠페인 실적) 구분
+      const parsed: { name: string; rows: NormalizedRow[]; isAdLevel: boolean }[] = [];
       const failed: string[] = []; // 형식을 못 읽은 파일
       const emptyFiles: string[] = []; // 읽었지만 실적(노출·비용 등)이 모두 0인 파일
 
       for (const file of files) {
         try {
           const rawRows = await parseFile(file);
-          const { rows } = normalizeRows(rawRows, campaignNameFromFile(file.name));
+          const { rows, mapping } = normalizeRows(
+            rawRows,
+            campaignNameFromFile(file.name)
+          );
           if (rows.length === 0) {
-            // 데이터 행은 있으나 전부 0이면 '실적 없음', 아예 없으면 '형식 오류'
             if (rawRows.length > 0) emptyFiles.push(file.name);
             else failed.push(file.name);
+            continue;
           }
-          allRows.push(...rows);
+          parsed.push({ name: file.name, rows, isAdLevel: !!mapping.adName });
         } catch {
           failed.push(file.name);
         }
       }
+
+      // 광고 실적과 캠페인 실적은 같은 데이터라 둘 다 합치면 2배 중복.
+      // ad-level(광고 실적)이 있으면 그것만 쓰고 campaign-level(캠페인 실적)은 제외.
+      const hasAdLevel = parsed.some((p) => p.isAdLevel);
+      const used = hasAdLevel ? parsed.filter((p) => p.isAdLevel) : parsed;
+      const dedupDropped = hasAdLevel
+        ? parsed.filter((p) => !p.isAdLevel).map((p) => p.name)
+        : [];
+      const allRows = used.flatMap((p) => p.rows);
 
       if (allRows.length === 0) {
         if (emptyFiles.length > 0 && failed.length === 0) {
@@ -116,9 +129,7 @@ export default function Home() {
         );
       }
 
-      const okNames = files
-        .map((f) => f.name)
-        .filter((n) => !failed.includes(n) && !emptyFiles.includes(n));
+      const okNames = used.map((p) => p.name);
       const foreign = detectForeignCurrencies(allRows);
 
       setBaseRows(allRows);
@@ -132,6 +143,12 @@ export default function Home() {
         notices.push(`읽지 못해 제외된 파일: ${failed.join(", ")}`);
       if (emptyFiles.length > 0)
         notices.push(`실적이 0이라 제외된 파일: ${emptyFiles.join(", ")}`);
+      if (dedupDropped.length > 0)
+        notices.push(
+          `중복 제외: ${dedupDropped.join(
+            ", "
+          )} (광고 실적과 같은 데이터라 캠페인 실적은 합산에서 제외)`
+        );
       setError(notices.length > 0 ? notices.join(" / ") : null);
 
       // 외화가 있으면 평균 환율을 자동 조회해 적용
