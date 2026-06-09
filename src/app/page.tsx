@@ -79,13 +79,18 @@ export default function Home() {
     setError(null);
     try {
       const allRows: NormalizedRow[] = [];
-      const failed: string[] = [];
+      const failed: string[] = []; // 형식을 못 읽은 파일
+      const emptyFiles: string[] = []; // 읽었지만 실적(노출·비용 등)이 모두 0인 파일
 
       for (const file of files) {
         try {
           const rawRows = await parseFile(file);
           const { rows } = normalizeRows(rawRows, campaignNameFromFile(file.name));
-          if (rows.length === 0) failed.push(file.name);
+          if (rows.length === 0) {
+            // 데이터 행은 있으나 전부 0이면 '실적 없음', 아예 없으면 '형식 오류'
+            if (rawRows.length > 0) emptyFiles.push(file.name);
+            else failed.push(file.name);
+          }
           allRows.push(...rows);
         } catch {
           failed.push(file.name);
@@ -93,22 +98,31 @@ export default function Home() {
       }
 
       if (allRows.length === 0) {
+        if (emptyFiles.length > 0 && failed.length === 0) {
+          throw new Error(
+            "파일은 정상적으로 읽었지만, 노출·조회·클릭·비용이 모두 0인 광고만 있어 분석할 실적이 없습니다. 해당 기간에 노출이 발생한 광고가 포함된 파일을 올려주세요."
+          );
+        }
         throw new Error(
           "분석할 데이터를 찾지 못했습니다. Google Ads에서 내보낸 Excel/CSV가 맞는지 확인해 주세요."
         );
       }
 
-      const okNames = files.map((f) => f.name).filter((n) => !failed.includes(n));
+      const okNames = files
+        .map((f) => f.name)
+        .filter((n) => !failed.includes(n) && !emptyFiles.includes(n));
       const foreign = detectForeignCurrencies(allRows);
 
       setBaseRows(allRows);
       setFileNames(okNames);
       setCurrencies(foreign);
-      setError(
-        failed.length > 0
-          ? `다음 파일은 데이터를 읽지 못해 제외했습니다: ${failed.join(", ")}`
-          : null
-      );
+
+      const notices: string[] = [];
+      if (failed.length > 0)
+        notices.push(`읽지 못해 제외된 파일: ${failed.join(", ")}`);
+      if (emptyFiles.length > 0)
+        notices.push(`실적이 0이라 제외된 파일: ${emptyFiles.join(", ")}`);
+      setError(notices.length > 0 ? notices.join(" / ") : null);
 
       // 외화가 있으면 평균 환율을 자동 조회해 적용
       if (foreign.length > 0) {
