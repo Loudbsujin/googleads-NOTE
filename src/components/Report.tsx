@@ -26,10 +26,12 @@ interface Props {
   total: Metrics;
   campaigns: GroupResult[];
   ads: GroupResult[];
+  adGroups: GroupResult[];
   keywords: GroupResult[];
   devices: GroupResult[];
   ages: GroupResult[];
   genders: GroupResult[];
+  categoryComparison: GroupResult[];
   rows: NormalizedRow[];
   insights: Insight[];
 }
@@ -71,10 +73,12 @@ export default function Report({
   total,
   campaigns,
   ads,
+  adGroups,
   keywords,
   devices,
   ages,
   genders,
+  categoryComparison,
   rows,
   insights,
 }: Props) {
@@ -124,6 +128,76 @@ export default function Report({
           <KpiCard label="CPM" value={fmtCost(total.cpm)} sub="1,000회 노출당" />
         </div>
       </section>
+
+      {/* 구글애즈 vs 프로모션 비교 */}
+      {categoryComparison.length > 1 && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">유형별 비교 (구글애즈 vs 프로모션)</h2>
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-left text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 font-medium">유형</th>
+                  <th className="px-4 py-2 text-right font-medium">비용</th>
+                  <th className="px-4 py-2 text-right font-medium">조회수</th>
+                  <th className="px-4 py-2 text-right font-medium">CPV</th>
+                  <th className="px-4 py-2 text-right font-medium">클릭(CTR)</th>
+                  <th className="px-4 py-2 text-right font-medium">전환(CPA)</th>
+                  <th className="px-4 py-2 text-right font-medium">획득조회율</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryComparison.map((g) => (
+                  <tr key={g.key} className="border-t border-gray-100">
+                    <td className="px-4 py-2 font-semibold">{g.key}</td>
+                    <td className="px-4 py-2 text-right">{fmtCost(g.metrics.cost)}</td>
+                    <td className="px-4 py-2 text-right">{fmtInt(g.metrics.views)}</td>
+                    <td className="px-4 py-2 text-right">{fmtCpv(g.metrics.cpv)}</td>
+                    <td className="px-4 py-2 text-right">
+                      {fmtInt(g.metrics.clicks)}{" "}
+                      <span className="text-gray-400">({fmtPct(g.metrics.ctr)})</span>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {fmtInt(g.metrics.conversions)}{" "}
+                      <span className="text-gray-400">
+                        ({g.metrics.conversions > 0 ? fmtCost(g.metrics.cpa) : "-"})
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right">{fmtPct(g.metrics.followOnRate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-gray-400">
+            두 유형은 목적이 달라요 — 구글애즈는 조회·시청, 프로모션은 클릭·전환 중심
+            경향. CPV·CPA로 효율을 비교하세요.
+          </p>
+        </section>
+      )}
+
+      {/* 전환 효율 (CPA·전환율) */}
+      {total.conversions > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">전환 효율</h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <KpiCard label="전환수" value={fmtInt(total.conversions)} />
+            <KpiCard label="전환당 비용 (CPA)" value={fmtCost(total.cpa)} sub="낮을수록 효율적" />
+            <KpiCard label="전환율" value={fmtPct(total.convRate)} sub="전환 / 클릭" />
+          </div>
+          <div className="mt-4">
+            <div className="mb-2 text-sm font-medium text-gray-600">
+              전환 견인 캠페인 TOP
+            </div>
+            <ConversionTable
+              groups={[...campaigns]
+                .filter((c) => c.metrics.conversions > 0)
+                .sort((a, b) => b.metrics.conversions - a.metrics.conversions)
+                .slice(0, 10)}
+            />
+          </div>
+        </section>
+      )}
 
       {/* ③ 채널 파급·성장 지표 (획득 조회/구독) */}
       {showEarned && (
@@ -321,6 +395,24 @@ export default function Report({
         </section>
       )}
 
+      {/* 광고그룹(타겟팅)별 분석 */}
+      {adGroups.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">광고그룹(타겟팅)별 분석</h2>
+          <RankTable
+            groups={[...adGroups]
+              .sort((a, b) => b.metrics.views - a.metrics.views)
+              .slice(0, 12)}
+            dimensionLabel="광고그룹"
+            showSubs={showEarned}
+          />
+          <p className="mt-2 text-xs text-gray-400">
+            어떤 타겟팅(광고그룹)이 조회·전환 효율이 좋은지 비교해 예산 배분에
+            활용하세요.
+          </p>
+        </section>
+      )}
+
       {/* 기기별 분해 */}
       {devices.length > 0 && (
         <section>
@@ -361,6 +453,44 @@ export default function Report({
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+function ConversionTable({ groups }: { groups: GroupResult[] }) {
+  if (groups.length === 0) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+        전환이 발생한 캠페인이 없습니다.
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-left text-gray-500">
+          <tr>
+            <th className="px-4 py-2 font-medium">#</th>
+            <th className="px-4 py-2 font-medium">캠페인</th>
+            <th className="px-4 py-2 text-right font-medium">전환수</th>
+            <th className="px-4 py-2 text-right font-medium">전환율</th>
+            <th className="px-4 py-2 text-right font-medium">CPA</th>
+            <th className="px-4 py-2 text-right font-medium">비용</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g, i) => (
+            <tr key={g.key} className="border-t border-gray-100">
+              <td className="px-4 py-2 text-gray-400">{i + 1}</td>
+              <td className="px-4 py-2 font-medium">{g.key}</td>
+              <td className="px-4 py-2 text-right">{fmtInt(g.metrics.conversions)}</td>
+              <td className="px-4 py-2 text-right">{fmtPct(g.metrics.convRate)}</td>
+              <td className="px-4 py-2 text-right">{fmtCost(g.metrics.cpa)}</td>
+              <td className="px-4 py-2 text-right">{fmtCost(g.metrics.cost)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

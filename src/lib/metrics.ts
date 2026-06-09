@@ -52,6 +52,8 @@ export interface Metrics {
   cpm: number; // 1000회 노출당 비용
   followOnRate: number; // 획득 조회율(follow-on) = 획득 조회수 / TrueView 조회수
   subRate: number; // 구독 견인율 = 획득 구독자 / 조회수
+  cpa: number; // 전환당 비용 = 비용 / 전환수
+  convRate: number; // 전환율 = 전환수 / 클릭수
   // 재생 진행률 (노출 가중 평균, 0~1)
   vp25: number;
   vp50: number;
@@ -129,6 +131,8 @@ export function computeMetrics(rows: NormalizedRow[]): Metrics {
     cpm: safeDiv(cost, impressions) * 1000,
     followOnRate: safeDiv(earnedViews, views),
     subRate: safeDiv(earnedSubscribers, views),
+    cpa: safeDiv(cost, conversions),
+    convRate: safeDiv(conversions, clicks),
     vp25: safeDiv(vp25w, w),
     vp50: safeDiv(vp50w, w),
     vp75: safeDiv(vp75w, w),
@@ -186,7 +190,9 @@ export function normalizeRows(
       const category = categoryOf(campaign);
       // 프로모션은 광고 이름을 캠페인 명과 동일하게 표시
       const adName = category === "프로모션" ? campaign : str(row, "adName");
-      const adGroup = str(row, "adGroup");
+      // 광고그룹: "광고그룹"/"Ad group" 같은 머리글성 placeholder 값은 미지정 처리
+      const adGroupRaw = str(row, "adGroup");
+      const adGroup = /^(광고그룹|ad\s*group)$/i.test(adGroupRaw) ? "" : adGroupRaw;
       // 식별용 라벨: 캠페인 › 광고그룹 › 광고명 (중복 조각 제거)
       const adLabel =
         category === "프로모션"
