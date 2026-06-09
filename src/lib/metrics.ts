@@ -183,29 +183,35 @@ export function normalizeRows(
   };
 
   const rows: NormalizedRow[] = rawRows
-    .map((row) => ({
-      campaign: campaignOf(row),
-      category: categoryOf(row),
-      adName: str(row, "adName"),
-      adGroup: str(row, "adGroup"),
-      keyword: str(row, "keyword"),
-      date: str(row, "date"),
-      device: str(row, "device"),
-      age: str(row, "age"),
-      gender: str(row, "gender"),
-      currency: (clean(get(row, "currency")) || "KRW").toUpperCase(),
-      impressions: toNumber(get(row, "impressions")),
-      views: toNumber(get(row, "views")),
-      clicks: toNumber(get(row, "clicks")),
-      cost: toNumber(get(row, "cost")),
-      conversions: toNumber(get(row, "conversions")),
-      earnedViews: toNumber(get(row, "earnedViews")),
-      earnedSubscribers: toNumber(get(row, "earnedSubscribers")),
-      vp25: toRate(get(row, "vp25")),
-      vp50: toRate(get(row, "vp50")),
-      vp75: toRate(get(row, "vp75")),
-      vp100: toRate(get(row, "vp100")),
-    }))
+    .map((row) => {
+      const campaign = campaignOf(row);
+      const category = categoryOf(row);
+      // 디멘드젠(프로모션)은 광고 이름을 캠페인 명과 동일하게 표시
+      const adName = category === "디멘드젠" ? campaign : str(row, "adName");
+      return {
+        campaign,
+        category,
+        adName,
+        adGroup: str(row, "adGroup"),
+        keyword: str(row, "keyword"),
+        date: str(row, "date"),
+        device: str(row, "device"),
+        age: str(row, "age"),
+        gender: str(row, "gender"),
+        currency: (clean(get(row, "currency")) || "KRW").toUpperCase(),
+        impressions: toNumber(get(row, "impressions")),
+        views: toNumber(get(row, "views")),
+        clicks: toNumber(get(row, "clicks")),
+        cost: toNumber(get(row, "cost")),
+        conversions: toNumber(get(row, "conversions")),
+        earnedViews: toNumber(get(row, "earnedViews")),
+        earnedSubscribers: toNumber(get(row, "earnedSubscribers")),
+        vp25: toRate(get(row, "vp25")),
+        vp50: toRate(get(row, "vp50")),
+        vp75: toRate(get(row, "vp75")),
+        vp100: toRate(get(row, "vp100")),
+      };
+    })
     // 합계/총계 행 및 완전히 빈 행 제거
     .filter((r) => {
       const isTotal = /total|총계|합계/i.test(r.campaign);
