@@ -43,7 +43,7 @@ function campaignNameFromFile(name: string): string {
 function analyze(rows: NormalizedRow[], fileNames: string[]): Analysis {
   const total = computeMetrics(rows);
   const campaigns = groupBy(rows, "campaign");
-  const ads = groupBy(rows, "adName");
+  const ads = groupBy(rows, "adLabel");
   const keywords = groupBy(rows, "keyword");
   return {
     total,

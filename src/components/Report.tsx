@@ -38,6 +38,8 @@ const fmtInt = (n: number) => Math.round(n).toLocaleString("ko-KR");
 const fmtCpv = (n: number) => `₩${n.toFixed(1)}`;
 const fmtPct = (n: number) => `${(n * 100).toFixed(2)}%`;
 const fmtCost = (n: number) => `₩${Math.round(n).toLocaleString("ko-KR")}`;
+// "캠페인 › 그룹 › 광고명" 에서 마지막 조각(광고명)만 — 그래프 축 표시용
+const shortLabel = (key: string) => key.split(" › ").pop() || key;
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -234,21 +236,30 @@ export default function Report({
             <ResponsiveContainer width="100%" height={340}>
               <BarChart
                 layout="vertical"
-                data={topAds.map((c) => ({ name: c.key, views: c.metrics.views }))}
+                data={topAds.map((c) => ({ full: c.key, views: c.metrics.views }))}
                 margin={{ left: 12, right: 16 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => fmtInt(v)} />
                 <YAxis
                   type="category"
-                  dataKey="name"
+                  dataKey="full"
                   tick={{ fontSize: 11 }}
                   width={150}
+                  tickFormatter={(v: string) => shortLabel(v)}
                 />
-                <Tooltip formatter={(v: number) => fmtInt(v) + "회"} />
+                <Tooltip
+                  formatter={(v: number) => [fmtInt(v) + "회", "조회수"]}
+                  labelFormatter={(label: string) => label}
+                  contentStyle={{ maxWidth: 320, whiteSpace: "normal" }}
+                />
                 <Bar dataKey="views" radius={[0, 6, 6, 0]} fill="#4285F4" />
               </BarChart>
             </ResponsiveContainer>
+            <p className="mt-2 text-xs text-gray-400">
+              세로축은 광고명만 표시 · 막대에 마우스를 올리면 전체 경로(캠페인 ›
+              광고그룹 › 광고명)가 보입니다.
+            </p>
           </div>
           <div className="mt-3">
             <RankTable groups={topAds} dimensionLabel="광고(소재)" showSubs={showEarned} />
