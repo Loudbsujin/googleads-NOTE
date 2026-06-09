@@ -11,8 +11,9 @@ export interface RawRow {
 export interface NormalizedRow {
   // 차원
   campaign: string;
-  category: string; // 캠페인 유형 분류: "동영상" | "디멘드젠"
+  category: string; // 캠페인 유형 분류: "구글애즈" | "프로모션"
   adName: string;
+  adLabel: string; // 식별용 표시명: "캠페인 › 광고그룹 › 광고명"
   adGroup: string;
   keyword: string;
   date: string;
@@ -185,11 +186,21 @@ export function normalizeRows(
       const category = categoryOf(campaign);
       // 프로모션은 광고 이름을 캠페인 명과 동일하게 표시
       const adName = category === "프로모션" ? campaign : str(row, "adName");
+      const adGroup = str(row, "adGroup");
+      // 식별용 라벨: 캠페인 › 광고그룹 › 광고명 (중복 조각 제거)
+      const adLabel =
+        category === "프로모션"
+          ? campaign
+          : [campaign, adGroup, adName]
+              .filter(Boolean)
+              .filter((v, i, a) => a.indexOf(v) === i)
+              .join(" › ") || campaign;
       return {
         campaign,
         category,
         adName,
-        adGroup: str(row, "adGroup"),
+        adLabel,
+        adGroup,
         keyword: str(row, "keyword"),
         date: str(row, "date"),
         device: str(row, "device"),
