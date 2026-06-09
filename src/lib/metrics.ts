@@ -11,6 +11,7 @@ export interface RawRow {
 export interface NormalizedRow {
   // 차원
   campaign: string;
+  category: string; // 캠페인 유형 분류: "동영상" | "디멘드젠"
   adName: string;
   adGroup: string;
   keyword: string;
@@ -174,9 +175,17 @@ export function normalizeRows(
   const str = (row: RawRow, field: CanonicalField): string =>
     clean(get(row, field));
 
+  // 광고 유형으로 캠페인 분류 ("디맨드젠 동영상 광고" → 디멘드젠, 그 외 → 동영상)
+  const categoryOf = (row: RawRow): string => {
+    const adType = str(row, "adType");
+    if (/디맨드젠|디멘드젠|demand\s*gen/i.test(adType)) return "디멘드젠";
+    return "동영상";
+  };
+
   const rows: NormalizedRow[] = rawRows
     .map((row) => ({
       campaign: campaignOf(row),
+      category: categoryOf(row),
       adName: str(row, "adName"),
       adGroup: str(row, "adGroup"),
       keyword: str(row, "keyword"),
@@ -206,6 +215,15 @@ export function normalizeRows(
     });
 
   return { rows, mapping };
+}
+
+// 데이터에 등장하는 캠페인 유형 분류 목록 (행 수 많은 순).
+export function detectCategories(rows: NormalizedRow[]): string[] {
+  const counts = new Map<string, number>();
+  rows.forEach((r) => counts.set(r.category, (counts.get(r.category) ?? 0) + 1));
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => k);
 }
 
 // 데이터에 등장하는 통화 코드 목록 (KRW 제외, 환산이 필요한 것만).
