@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import FileUpload from "@/components/FileUpload";
+import UploadGuide from "@/components/UploadGuide";
 import Report from "@/components/Report";
 import ExportBar from "@/components/ExportBar";
 import CurrencyBar from "@/components/CurrencyBar";
@@ -153,6 +154,7 @@ export default function Home() {
 
       <div className="no-print">
         <FileUpload onFiles={handleFiles} loading={loading} />
+        <UploadGuide />
         {error && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
