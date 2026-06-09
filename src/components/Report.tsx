@@ -94,35 +94,58 @@ export default function Report({
 
   return (
     <div className="space-y-8">
-      {/* 핵심 지표 요약 */}
+      {/* 핵심 지표 요약 — 시청(TrueView)과 클릭은 다른 단계라 분리해서 본다 */}
       <section>
-        <h2 className="mb-3 text-lg font-bold">핵심 지표 요약</h2>
+        <h2 className="mb-1 text-lg font-bold">핵심 지표 요약</h2>
+        <p className="mb-3 text-xs text-gray-500">
+          ① 직접 시청(TrueView) · ② 클릭 · ③ 파급(획득 조회)은 퍼널의 서로 다른
+          단계라 따로 봅니다.
+        </p>
+
+        <div className="mb-2 text-xs font-semibold text-gray-500">
+          ① 직접 시청 (광고로 본 시청)
+        </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <KpiCard label="총 조회수" value={fmtInt(total.views)} sub="견인된 시청" />
+          <KpiCard label="TrueView 조회수" value={fmtInt(total.views)} sub="광고로 직접 본 시청" />
           <KpiCard label="조회당 비용 (CPV)" value={fmtCpv(total.cpv)} sub="낮을수록 효율적" />
           <KpiCard label="조회율" value={fmtPct(total.viewRate)} sub="조회수 / 노출수" />
-          <KpiCard label="총 비용" value={fmtCost(total.cost)} />
           <KpiCard label="총 노출수" value={fmtInt(total.impressions)} />
-          <KpiCard label="총 클릭수" value={fmtInt(total.clicks)} sub={`CTR ${fmtPct(total.ctr)}`} />
+        </div>
+
+        <div className="mb-2 mt-4 text-xs font-semibold text-gray-500">
+          ② 클릭 / 비용
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <KpiCard label="총 클릭수" value={fmtInt(total.clicks)} sub="능동적 행동(이동)" />
+          <KpiCard label="클릭률 (CTR)" value={fmtPct(total.ctr)} sub="클릭 / 노출" />
+          <KpiCard label="총 비용" value={fmtCost(total.cost)} />
           <KpiCard label="CPM" value={fmtCost(total.cpm)} sub="1,000회 노출당" />
-          <KpiCard label="전환수" value={fmtInt(total.conversions)} />
         </div>
       </section>
 
-      {/* 채널 성장 (획득 조회수/구독자) */}
+      {/* ③ 채널 파급·성장 지표 (획득 조회/구독) */}
       {showEarned && (
         <section>
-          <h2 className="mb-3 text-lg font-bold">채널 성장 지표</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <h2 className="mb-1 text-lg font-bold">③ 채널 파급·성장 지표</h2>
+          <p className="mb-3 text-xs text-gray-500">
+            광고 시청이 <b>채널 관심으로 번졌는지</b>를 봅니다. 조회수가 많아도
+            여기가 낮으면 “싸게 많이 봤지만 채널엔 관심 안 생김”입니다.
+          </p>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <KpiCard
-              label="획득 조회수"
+              label="획득 조회수 (follow-on)"
               value={fmtInt(total.earnedViews)}
-              sub="광고 이후 추가 발생한 조회"
+              sub="광고 이후 추가로 본 조회"
+            />
+            <KpiCard
+              label="획득 조회율"
+              value={fmtPct(total.followOnRate)}
+              sub="획득 조회수 / TrueView 조회수"
             />
             <KpiCard
               label="획득 구독자"
               value={fmtInt(total.earnedSubscribers)}
-              sub="광고가 만든 신규 구독"
+              sub="광고 후 자연 구독(earned)"
             />
             <KpiCard
               label="구독 견인율"
@@ -130,25 +153,18 @@ export default function Report({
               sub="획득 구독자 / 조회수"
             />
           </div>
-          {/* 구독자 견인 캠페인 */}
-          <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+
+          {/* follow-on율(획득 조회율) 캠페인 비교 — 조회를 채널 관심으로 전환시킨 캠페인 */}
+          <div className="mt-4">
             <div className="mb-2 text-sm font-medium text-gray-600">
-              구독자 견인 캠페인 TOP
+              획득 조회율(follow-on) 높은 캠페인 — 시청을 채널 관심으로 전환
             </div>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={[...campaigns]
-                  .sort((a, b) => b.metrics.earnedSubscribers - a.metrics.earnedSubscribers)
-                  .slice(0, 8)
-                  .map((c) => ({ name: c.key, subs: c.metrics.earnedSubscribers }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={70} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtInt(v)} />
-                <Tooltip formatter={(v: number) => fmtInt(v) + "명"} />
-                <Bar dataKey="subs" radius={[6, 6, 0, 0]} fill="#34a853" />
-              </BarChart>
-            </ResponsiveContainer>
+            <FollowOnTable
+              groups={[...campaigns]
+                .filter((c) => c.metrics.views >= 100)
+                .sort((a, b) => b.metrics.followOnRate - a.metrics.followOnRate)
+                .slice(0, 10)}
+            />
           </div>
         </section>
       )}
@@ -334,6 +350,44 @@ export default function Report({
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+function FollowOnTable({ groups }: { groups: GroupResult[] }) {
+  if (groups.length === 0) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+        비교할 캠페인이 없습니다 (조회수 100회 이상 기준).
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-left text-gray-500">
+          <tr>
+            <th className="px-4 py-2 font-medium">#</th>
+            <th className="px-4 py-2 font-medium">캠페인</th>
+            <th className="px-4 py-2 text-right font-medium">TrueView 조회수</th>
+            <th className="px-4 py-2 text-right font-medium">획득 조회수</th>
+            <th className="px-4 py-2 text-right font-medium">획득 조회율</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g, i) => (
+            <tr key={g.key} className="border-t border-gray-100">
+              <td className="px-4 py-2 text-gray-400">{i + 1}</td>
+              <td className="px-4 py-2 font-medium">{g.key}</td>
+              <td className="px-4 py-2 text-right">{fmtInt(g.metrics.views)}</td>
+              <td className="px-4 py-2 text-right">{fmtInt(g.metrics.earnedViews)}</td>
+              <td className="px-4 py-2 text-right font-semibold text-green-700">
+                {fmtPct(g.metrics.followOnRate)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
