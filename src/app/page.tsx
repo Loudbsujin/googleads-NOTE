@@ -25,10 +25,12 @@ interface Analysis {
   total: Metrics;
   campaigns: GroupResult[];
   ads: GroupResult[];
+  adGroups: GroupResult[];
   keywords: GroupResult[];
   devices: GroupResult[];
   ages: GroupResult[];
   genders: GroupResult[];
+  categoryComparison: GroupResult[];
   rows: NormalizedRow[];
   insights: Insight[];
   fileName: string;
@@ -40,7 +42,12 @@ function campaignNameFromFile(name: string): string {
 }
 
 // 원화 환산된 행으로 보고서용 분석 결과를 만든다.
-function analyze(rows: NormalizedRow[], fileNames: string[]): Analysis {
+// rows = (유형 필터 적용된) 분석 대상, allRows = 필터 전 전체(유형 비교용)
+function analyze(
+  rows: NormalizedRow[],
+  fileNames: string[],
+  allRows: NormalizedRow[]
+): Analysis {
   const total = computeMetrics(rows);
   const campaigns = groupBy(rows, "campaign");
   const ads = groupBy(rows, "adLabel");
@@ -49,10 +56,12 @@ function analyze(rows: NormalizedRow[], fileNames: string[]): Analysis {
     total,
     campaigns,
     ads,
+    adGroups: groupBy(rows, "adGroup"),
     keywords,
     devices: groupBy(rows, "device"),
     ages: groupBy(rows, "age"),
     genders: groupBy(rows, "gender"),
+    categoryComparison: groupBy(allRows, "category"),
     rows,
     insights: buildInsights(total, campaigns, keywords, ads),
     fileName:
@@ -79,7 +88,7 @@ export default function Home() {
       category === "전체"
         ? converted
         : converted.filter((r) => r.category === category);
-    return analyze(filtered, fileNames);
+    return analyze(filtered, fileNames, converted);
   }, [baseRows, rates, fileNames, category]);
 
   async function handleFiles(files: File[]) {
@@ -259,10 +268,12 @@ export default function Home() {
             total={analysis.total}
             campaigns={analysis.campaigns}
             ads={analysis.ads}
+            adGroups={analysis.adGroups}
             keywords={analysis.keywords}
             devices={analysis.devices}
             ages={analysis.ages}
             genders={analysis.genders}
+            categoryComparison={analysis.categoryComparison}
             rows={analysis.rows}
             insights={analysis.insights}
           />
