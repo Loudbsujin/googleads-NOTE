@@ -225,8 +225,8 @@ export default function Home() {
                 ))}
               </div>
               <div className="mt-1 text-xs text-gray-500">
-                현재 보기: <b>{category}</b> — 동영상(TrueView)과
-                디멘드젠(프로모션)은 지표가 달라 분리해서 봅니다.
+                현재 보기: <b>{category}</b> — 구글애즈와
+                프로모션(Youtube Promotion)을 분리해서 봅니다.
               </div>
             </div>
           )}

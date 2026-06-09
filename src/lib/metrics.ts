@@ -175,19 +175,16 @@ export function normalizeRows(
   const str = (row: RawRow, field: CanonicalField): string =>
     clean(get(row, field));
 
-  // 광고 유형으로 캠페인 분류 ("디맨드젠 동영상 광고" → 디멘드젠, 그 외 → 동영상)
-  const categoryOf = (row: RawRow): string => {
-    const adType = str(row, "adType");
-    if (/디맨드젠|디멘드젠|demand\s*gen/i.test(adType)) return "디멘드젠";
-    return "동영상";
-  };
+  // 캠페인 이름으로 분류: "Youtube Promotion..."으로 시작하면 프로모션, 그 외는 구글애즈
+  const categoryOf = (campaign: string): string =>
+    /^\s*youtube\s*promotion/i.test(campaign) ? "프로모션" : "구글애즈";
 
   const rows: NormalizedRow[] = rawRows
     .map((row) => {
       const campaign = campaignOf(row);
-      const category = categoryOf(row);
-      // 디멘드젠(프로모션)은 광고 이름을 캠페인 명과 동일하게 표시
-      const adName = category === "디멘드젠" ? campaign : str(row, "adName");
+      const category = categoryOf(campaign);
+      // 프로모션은 광고 이름을 캠페인 명과 동일하게 표시
+      const adName = category === "프로모션" ? campaign : str(row, "adName");
       return {
         campaign,
         category,
