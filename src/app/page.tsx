@@ -13,6 +13,7 @@ import {
   NormalizedRow,
   computeMetrics,
   convertToKRW,
+  detectCategories,
   detectForeignCurrencies,
   groupBy,
   normalizeRows,
@@ -65,15 +66,21 @@ export default function Home() {
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [rates, setRates] = useState<Record<string, number>>({});
   const [rateSource, setRateSource] = useState<string>("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [category, setCategory] = useState<string>("전체"); // 선택된 캠페인 유형
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 환산된 행 → 분석 결과 (환율이 바뀌면 자동 재계산)
+  // 환산 + 유형 필터 → 분석 결과 (환율·유형이 바뀌면 자동 재계산)
   const analysis = useMemo(() => {
     if (!baseRows) return null;
     const converted = convertToKRW(baseRows, rates);
-    return analyze(converted, fileNames);
-  }, [baseRows, rates, fileNames]);
+    const filtered =
+      category === "전체"
+        ? converted
+        : converted.filter((r) => r.category === category);
+    return analyze(filtered, fileNames);
+  }, [baseRows, rates, fileNames, category]);
 
   async function handleFiles(files: File[]) {
     setLoading(true);
@@ -117,6 +124,8 @@ export default function Home() {
       setBaseRows(allRows);
       setFileNames(okNames);
       setCurrencies(foreign);
+      setCategories(detectCategories(allRows));
+      setCategory("전체");
 
       const notices: string[] = [];
       if (failed.length > 0)
@@ -176,6 +185,34 @@ export default function Home() {
               PDF로 저장 / 인쇄
             </button>
           </div>
+
+          {/* 캠페인 유형 분류 필터 (동영상 / 디멘드젠) */}
+          {categories.length > 1 && (
+            <div className="mb-6">
+              <div className="mb-2 text-sm font-semibold text-gray-700">
+                캠페인 유형
+              </div>
+              <div className="inline-flex flex-wrap gap-1 rounded-lg border border-gray-200 bg-white p-1">
+                {["전체", ...categories].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategory(c)}
+                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+                      category === c
+                        ? "bg-brand text-white"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1 text-xs text-gray-500">
+                현재 보기: <b>{category}</b> — 동영상(TrueView)과
+                디멘드젠(프로모션)은 지표가 달라 분리해서 봅니다.
+              </div>
+            </div>
+          )}
 
           {currencies.length > 0 && (
             <div className="mb-6">

@@ -5,6 +5,7 @@ export type CanonicalField =
   | "campaign"
   | "campaignId"
   | "campaignType"
+  | "adType"
   | "adName"
   | "adGroup"
   | "keyword"
@@ -31,6 +32,8 @@ const FIELD_ALIASES: Record<CanonicalField, string[]> = {
   // 캠페인 ID(숫자)/유형("동영상" 등)을 캠페인 이름으로 오인식하지 않도록 먼저 흡수하는 decoy 필드
   campaignId: ["캠페인id", "campaignid"],
   campaignType: ["캠페인유형", "campaigntype"],
+  // 광고 유형으로 동영상(TrueView) vs 디멘드젠 캠페인을 분류
+  adType: ["광고유형", "adtype"],
   // 동영상/광고 보고서에는 캠페인명 대신 광고 이름이 핵심 견인 차원이 된다
   adName: ["광고이름", "adname", "광고소재"],
   adGroup: ["adgroup", "광고그룹", "광고그룹이름", "adgroupname"],
