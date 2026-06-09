@@ -48,6 +48,7 @@ export interface Metrics {
   ctr: number; // 클릭률 = 클릭수 / 노출수
   cpc: number; // 클릭당 비용 = 비용 / 클릭수
   cpm: number; // 1000회 노출당 비용
+  followOnRate: number; // 획득 조회율(follow-on) = 획득 조회수 / TrueView 조회수
   subRate: number; // 구독 견인율 = 획득 구독자 / 조회수
   // 재생 진행률 (노출 가중 평균, 0~1)
   vp25: number;
@@ -124,6 +125,7 @@ export function computeMetrics(rows: NormalizedRow[]): Metrics {
     ctr: safeDiv(clicks, impressions),
     cpc: safeDiv(cost, clicks),
     cpm: safeDiv(cost, impressions) * 1000,
+    followOnRate: safeDiv(earnedViews, views),
     subRate: safeDiv(earnedSubscribers, views),
     vp25: safeDiv(vp25w, w),
     vp50: safeDiv(vp50w, w),

@@ -81,7 +81,8 @@ export function buildMarkdown(input: ExportInput, withPrompt: boolean): string {
     sections.push(`\n## 채널 성장 지표`);
     sections.push(
       [
-        `- 획득 조회수: ${fmtInt(total.earnedViews)}회`,
+        `- 획득 조회수(follow-on): ${fmtInt(total.earnedViews)}회`,
+        `- 획득 조회율: ${fmtPct(total.followOnRate)} (획득 조회수 / TrueView 조회수)`,
         `- 획득 구독자: ${fmtInt(total.earnedSubscribers)}명`,
         `- 구독 견인율: ${fmtPct(total.subRate)}`,
       ].join("\n")
@@ -155,6 +156,7 @@ export function buildCsv(input: ExportInput): string {
     "ctr",
     "cpc",
     "cpm",
+    "followOnRate",
     "subRate",
     "vp25",
     "vp50",
@@ -181,6 +183,7 @@ export function buildCsv(input: ExportInput): string {
       m.ctr.toFixed(4),
       m.cpc.toFixed(2),
       m.cpm.toFixed(2),
+      m.followOnRate.toFixed(4),
       m.subRate.toFixed(4),
       m.vp25.toFixed(4),
       m.vp50.toFixed(4),

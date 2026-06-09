@@ -100,6 +100,18 @@ export function buildInsights(
     }
   }
 
+  // 5-2. 획득 조회율(follow-on) — 시청이 채널 관심으로 번졌는지
+  if (total.earnedViews > 0 || total.followOnRate > 0) {
+    const good = total.followOnRate >= 0.02; // 2% 이상이면 양호로 간주
+    insights.push({
+      type: good ? "positive" : "warning",
+      title: `획득 조회율(follow-on) ${fmtPct(total.followOnRate)}`,
+      detail: good
+        ? "광고 시청이 채널의 다른 영상 시청으로 잘 번지고 있습니다. 콘텐츠 연결고리가 좋아요."
+        : "광고로는 많이 봤지만 채널 관심으로 거의 안 번졌습니다. 썸네일·도입부·채널 내 추천 영상 연결을 점검해 보세요.",
+    });
+  }
+
   // 6. 시청 지속률 (재생 진행률 100%)
   if (total.vp100 > 0) {
     const completion = total.vp100;
